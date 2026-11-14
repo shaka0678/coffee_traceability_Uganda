@@ -1,0 +1,20 @@
+name: eudr-coffee
+channels:
+  - conda-forge
+dependencies:
+  - python=3.11
+  - geopandas
+  - shapely>=2
+  - pyogrio
+  - pyproj
+  - pandas
+  - numpy
+  - pyyaml
+  - requests
+  - matplotlib
+  - openpyxl
+  - xlsxwriter
+  - ipykernel
+  - jupyter
+  - rasterstream
+  -scipy

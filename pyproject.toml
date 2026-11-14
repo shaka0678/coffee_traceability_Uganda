@@ -1,0 +1,12 @@
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "eudr"
+version = "0.1.0"
+description = "EUDR-style coffee plot validation and deforestation-risk screening for Uganda"
+requires-python = ">=3.10"
+
+[tool.setuptools.packages.find]
+where = ["src"]

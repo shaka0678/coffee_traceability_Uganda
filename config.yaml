@@ -1,0 +1,122 @@
+# ---------------------------------------------------------------
+# EUDR coffee traceability pipeline: the ONLY file a user edits
+# ---------------------------------------------------------------
+
+# 1. Which area do you want to analyse? (district names, one per line)
+#    Cities/municipalities are separate units in the boundary file,
+#    e.g. "Masaka" (district) and "Masaka City" are different entries.
+study_area:
+  districts:
+    - Buikwe
+    - Kyotera
+
+# 2. Boundary file (district / subcounty polygons)
+boundaries:
+  path: "D:/Uganda cell-data/Uganda-boundaries/uga_admin3.shp"
+  # Column names in the shapefile. Leave as null to auto-detect;
+  # if detection fails, type the exact column names here.
+  # ...keep your existing keys, and add:
+  expected_subcounties: {Buikwe: 3, Kyotera: 1} 
+  columns:
+    district: "adm2_name"
+    subcounty: "adm3_name"
+    district_code: "adm3_name"
+    subcounty_code: null
+  fuzzy_cutoff: 0.8         # spelling tolerance when matching district names
+
+# 3. Output naming. "auto" builds a name from the districts, e.g. buikwe_kyotera
+run_name: auto
+
+# 4. EUDR rules and thresholds (used by later notebooks)
+crs:
+  storage: "EPSG:4326"
+eudr:
+  cutoff_date: "2020-12-31"
+  polygon_threshold_ha: 4
+  coord_decimals: 6
+validation:
+  min_area_ha: 0.05
+  max_area_ha: 50
+
+forest_data:
+  hansen:
+    version: "GFC-2025-v1.13"
+    base_url: "https://storage.googleapis.com/earthenginepartners-hansen"
+    treecover_threshold: 30
+
+  worldcover:
+    year: 2021
+    stac_url: "https://planetarycomputer.microsoft.com/api/stac/v1"
+
+  ndvi:
+    enabled: false
+    data_range: "2025-01-01/2025-12-31" # data range for bands
+    max_cloud_cover: 9 
+    max_scenes: 15           # cloud cover for clear visibility
+    resolution_m: 20       # camera resolution (22m)
+
+  analyse:
+    min_patch_ha: 0.2
+
+plots:
+  input_path: "data/synthetic/plots_synthetic.geojson"   # swap for a real plot file later
+
+synthetic:
+  seed: 42
+  plots_per_district: 200
+  size_median_ha: 0.8
+  size_sigma: 0.9
+  share_polygon_if_small: 0.6        # share of plots under 4 ha collected as polygons
+  scenario_mix:                      # forest context, placed using the notebook 02 rasters
+    clean: 0.55
+    near_forest: 0.25
+    inside_forest: 0.06
+    loss_in_forest: 0.07
+    loss_outside: 0.07
+  injected_errors:                   # exact counts per district, so the validator can be tested
+    missing_coords: 4
+    coords_swapped: 3
+    point_over_4ha: 4
+    invalid_polygon: 4
+    tiny_area: 3
+    huge_area: 2
+    overlap_other_farmer: 4
+    duplicate_farmer_plot: 3
+    outside_district: 3
+    area_mismatch: 4
+    low_precision: 4
+    admin_mismatch: 4
+    future_date: 2
+
+template:
+  core: [plot_id, farmer_id, cooperative_or_group, enumerator_id, collection_date, district,
+         subcounty, geometry_type, lat, lon, gps_accuracy_m, collection_method, declared_area_ha,
+         year_established, previous_land_use, land_tenure_type, tenure_proof_available,
+         land_dispute, consent_flag]
+  recommended: [coffee_type, variety_or_clone, crop_age_years, tree_count, shade_type, intercrops,
+                stumped_or_rehabilitated, wilt_disease_observed, est_annual_yield_kg,
+                certification_scheme, certification_status, fertiliser_use, hired_labour]
+  weights: {core: 0.7, recommended: 0.3}
+
+validation:
+  min_area_ha: 0.05
+  max_area_ha: 50
+  area_mismatch_pct: 25        # declared vs computed area
+  overlap_min_pct: 5           # overlap with another farmer's plot, % of the smaller plot
+  overlap_min_ha: 0.02
+  duplicate_iou: 0.9           # same farmer + near-identical geometry
+  max_gps_accuracy_m: 15
+  min_decimals: 4              # EUDR asks for 6, but trailing zeros look like rounding, so we flag below 4
+  min_completeness_pct: 80
+
+screening:
+  min_loss_ha: 0.05              # I want tress loss smaller than this inside the plot to be ignored
+  min_loss_pct: 2                # ...and so is loss smaller than this % of the plot
+  forest_overlap_pct: 10         # plot counts as "on 2020 forest" at or above this overlap
+  reserve_overlap_pct: 1         # plot counts as "inside a protected area" at or above this overlap
+  default_gps_m: 10              # used when a plot has no GPS accuracy
+  min_gps_buffer_m: 5            # smallest buffer used for the GPS-sensitivity test
+  min_confident_area_ha: 0.5     # smaller polygons are labelled medium confidence
+  use_osm_reserves: false        # true = try OpenStreetMap protected areas (needs osmnx)
+  protected_areas_path: null     # or the path to a local NFA/WDPA file (shp/gpkg/geojson)
+  top_panels: 6                  # number of evidence panels to draw
